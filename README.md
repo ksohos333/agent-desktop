@@ -59,6 +59,20 @@ which actions are allowed, which require an explicit confirm token, protected
 paths, and the audit log location. API keys are read from environment
 variables — never from the policy file.
 
+## How I built this
+
+**The problem.** A desktop agent that can click anything is a liability, not a feature. The interesting part of this project is not the browser automation — it is deciding, in code, which actions are allowed to happen without asking.
+
+**Design decisions worth arguing about:**
+
+- **The policy engine is the product, not a wrapper.** Every tool call passes through `PolicyEngine` *before* it executes. Tool implementations do not decide their own permissions, so a new tool cannot accidentally become an unguarded one.
+- **Confirmation tokens, not UI prompts.** A prompt can be dismissed; a token cannot be forged. The caller receives a token bound to a specific action and must present it back. Friction applied everywhere is friction people route around, so confirmation is scoped to the destructive path only.
+- **Redaction happens at the tool boundary.** Secrets are stripped from tool output before it reaches the model, not before it reaches the user. The model never sees a credential it could echo into a transcript.
+- **JSONL, not a database.** An append-only log is greppable, cheap, and impossible to lose in a way you don't notice. It also survives the agent crashing, which is exactly when you want the record.
+- **Tests over demos.** 41 tests cover the policy paths — commit, session, confirmation, browser — because the failure mode of this project is a policy that silently permits too much.
+
+**What I would change with more time:** the policy rules are currently code rather than configuration, which means changing them requires a deploy. A declarative policy file with a schema would make the safe thing the easy thing for whoever operates it.
+
 ## License
 
 [MIT](LICENSE)
